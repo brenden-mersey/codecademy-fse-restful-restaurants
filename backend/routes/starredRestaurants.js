@@ -20,10 +20,14 @@ let STARRED_RESTAURANTS = [
   },
 ];
 
-const joinRestaurantData = () => {
+/**
+ * Utility to join data together
+ */
+const joinedRestaurantData = () => {
   return STARRED_RESTAURANTS.map((starredRestaurant) => {
     const restaurant = ALL_RESTAURANTS.find((restaurant) => restaurant.id === starredRestaurant.restaurantId);
     return {
+      restaurantID: restaurant.id,
       id: starredRestaurant.id,
       comment: starredRestaurant.comment,
       name: restaurant.name,
@@ -35,13 +39,12 @@ const joinRestaurantData = () => {
  * Feature 6: Getting the list of all starred restaurants.
  */
 router.get("/", (req, res) => {
+
   /**
    * We need to join our starred data with the all restaurants data to get the names.
    * Normally this join would happen in the database.
    */
-  const joinedStarredRestaurants = joinRestaurantData();
-
-  res.json(joinedStarredRestaurants);
+  res.json(joinedRestaurantData());
 
 });
 
@@ -50,19 +53,27 @@ router.get("/", (req, res) => {
  */
 router.get("/:id", (req, res) => {
 
-  // Requested restaurant by ID
+  // Extract restaurant ID
   const { id } = req.params;
 
-  // Find the restaurant with the matching id.
-  const joinedStarredRestaurants = joinRestaurantData();
-  const foundStarredRestaurant = joinedStarredRestaurants.find((restaurant) => restaurant.id === id );
+  // Get joined restaurant data
+  const restaurants = joinedRestaurantData();
 
-  if (!foundStarredRestaurant) {
+  // Find restaurant by ID
+  const foundRestaurant = restaurants.find((restaurant) => restaurant.id === id );
+
+  // If not found
+  if ( !foundRestaurant ) {
     res.sendStatus(404);
     return;
   }
 
-  res.json(foundStarredRestaurant);
+  // JSON response
+  res.json({
+    id: foundRestaurant.restaurantID,
+    comment: foundRestaurant.comment,
+    name: foundRestaurant.name
+  });
 
 });
 
@@ -71,29 +82,79 @@ router.get("/:id", (req, res) => {
  */
 router.post("/", (req, res) => {
 
-  const { body } = req;
-  const { comment, restaurantId } = body;
+  const { id } = req.body;
 
-  const newId = uuidv4();
+  const restaurant = ALL_RESTAURANTS.find((restaurant) => restaurant.id === id);
+  const starredRestaurant = STARRED_RESTAURANTS.find((restaurant) => restaurant.restaurantId === id);
+
+  if ( !restaurant || starredRestaurant ) {
+    res.sendStatus(404);
+    return;
+  }
+
+  // Create a record for the new starred restaurant
   const newStarredRestaurant = {
-    id: newId,
-    comment,
-    restaurantId
+    id: uuidv4(),
+    restaurantId: restaurant.id,
+    comment: null
   };
 
+  // Push the new record into STARRED_RESTAURANTS
   STARRED_RESTAURANTS.push(newStarredRestaurant);
 
-  res.status(200).json(newStarredRestaurant);
+  res.status(200).send({
+	  id: newStarredRestaurant.id,
+	  comment: newStarredRestaurant.comment,
+	  name: restaurant.name
+  });
 
 });
 
 /**
  * Feature 9: Deleting from your list of starred restaurants.
  */
+router.delete("/:id", (req, res) => {
+
+  // Extract restaurant ID
+  const { id: starredID } = req.params;
+
+  // Remove starred restaurant from array by starred restaurant id
+  const FILTERED_STARRED_RESTAURANTS = STARRED_RESTAURANTS.filter((restaurant) => restaurant.id !== starredID);
+
+  // If arrays are the same size, nothing was removed
+  if ( FILTERED_STARRED_RESTAURANTS.length === STARRED_RESTAURANTS.length ) {
+    res.sendStatus(404);
+    return;
+  }
+
+  // Update array
+  STARRED_RESTAURANTS = FILTERED_STARRED_RESTAURANTS;
+
+
+  res.sendStatus(200);
+
+});
 
 
 /**
  * Feature 10: Updating your comment of a starred restaurant.
  */
+router.put("/:id", (req, res) => {
+
+  const { id } = req.params;
+  const { newComment } = req.body;
+
+  const starredRestaurant = STARRED_RESTAURANTS.find((restaurant) => restaurant.id === id);
+
+  if ( !starredRestaurant ) {
+    res.sendStatus(404);
+    return;
+  }
+
+  starredRestaurant.comment = newComment;
+
+  res.sendStatus(200);
+
+});
 
 module.exports = router;
