@@ -20,6 +20,17 @@ let STARRED_RESTAURANTS = [
   },
 ];
 
+const joinRestaurantData = () => {
+  return STARRED_RESTAURANTS.map((starredRestaurant) => {
+    const restaurant = ALL_RESTAURANTS.find((restaurant) => restaurant.id === starredRestaurant.restaurantId);
+    return {
+      id: starredRestaurant.id,
+      comment: starredRestaurant.comment,
+      name: restaurant.name,
+    };
+  });
+}
+
 /**
  * Feature 6: Getting the list of all starred restaurants.
  */
@@ -28,34 +39,53 @@ router.get("/", (req, res) => {
    * We need to join our starred data with the all restaurants data to get the names.
    * Normally this join would happen in the database.
    */
-  const joinedStarredRestaurants = STARRED_RESTAURANTS.map(
-    (starredRestaurant) => {
-      const restaurant = ALL_RESTAURANTS.find(
-        (restaurant) => restaurant.id === starredRestaurant.restaurantId
-      );
-
-      return {
-        id: starredRestaurant.id,
-        comment: starredRestaurant.comment,
-        name: restaurant.name,
-      };
-    }
-  );
+  const joinedStarredRestaurants = joinRestaurantData();
 
   res.json(joinedStarredRestaurants);
+
 });
 
 /**
  * Feature 7: Getting a specific starred restaurant.
  */
+router.get("/:id", (req, res) => {
 
+  // Requested restaurant by ID
+  const { id } = req.params;
 
+  // Find the restaurant with the matching id.
+  const joinedStarredRestaurants = joinRestaurantData();
+  const foundStarredRestaurant = joinedStarredRestaurants.find((restaurant) => restaurant.id === id );
+
+  if (!foundStarredRestaurant) {
+    res.sendStatus(404);
+    return;
+  }
+
+  res.json(foundStarredRestaurant);
+
+});
 
 /**
  * Feature 8: Adding to your list of starred restaurants.
  */
+router.post("/", (req, res) => {
 
+  const { body } = req;
+  const { comment, restaurantId } = body;
 
+  const newId = uuidv4();
+  const newStarredRestaurant = {
+    id: newId,
+    comment,
+    restaurantId
+  };
+
+  STARRED_RESTAURANTS.push(newStarredRestaurant);
+
+  res.status(200).json(newStarredRestaurant);
+
+});
 
 /**
  * Feature 9: Deleting from your list of starred restaurants.
@@ -65,7 +95,5 @@ router.get("/", (req, res) => {
 /**
  * Feature 10: Updating your comment of a starred restaurant.
  */
-
-
 
 module.exports = router;
